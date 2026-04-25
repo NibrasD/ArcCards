@@ -35,7 +35,8 @@ export default function Dashboard() {
 
   const wallet = "0xDC48211759e415eF86b6858C65532A63D60AEF3C"; // Hardcoded for demo
 
-  const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+  const rawApiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+  const API_BASE = rawApiBase.endsWith('/') ? rawApiBase.slice(0, -1) : rawApiBase;
 
   useEffect(() => {
     const fetchData = async () => {
