@@ -81,7 +81,14 @@ async def watch_events():
                 )
 
                 for event in events:
-                    order_id = event.args.order_id.hex()
+                    import uuid
+                    try:
+                        raw_str = event.args.order_id.decode('utf-8').rstrip('\x00')
+                        order_id = str(uuid.UUID(raw_str))
+                    except Exception:
+                        # Fallback if it wasn't a UUID
+                        order_id = event.args.order_id.hex()
+                        
                     sender = event.args.sender
                     amount = event.args.amount
                     tx_hash = event.transactionHash.hex()
