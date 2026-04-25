@@ -89,7 +89,8 @@ async def _real_lithic_fulfill(order_id: str, amount_usdc: float):
     sig, ts = VCCClient.sign_callback(order_id, body, vcc_client.callback_secret)
 
     async with httpx.AsyncClient() as client:
-        base = os.getenv("ARCCARDS_BASE_URL", "http://localhost:8000")
+        raw_base = os.getenv("ARCCARDS_BASE_URL", "http://localhost:8000")
+        base = raw_base.rstrip('/')
         await client.post(
             f"{base}/v1/webhooks/vcc",
             content=body,
