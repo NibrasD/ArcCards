@@ -114,11 +114,20 @@ async def pay_order_onchain(order_id: str, db: Session = Depends(get_db)):
         w3 = Web3(Web3.HTTPProvider(rpc))
         account = w3.eth.account.from_key(pk)
         
-        # 1. Approve USDC
-        erc20_abi = [{"constant":False,"inputs":[{"name":"_spender","type":"address"},{"name":"_value","type":"uint256"}],"name":"approve","outputs":[{"name":"","type":"bool"}],"type":"function"}]
+        # 1. Balance Checks (Gas & USDC)
+        gas_balance = w3.eth.get_balance(account.address)
+        if gas_balance == 0:
+            raise Exception(f"Agent wallet {account.address} has 0 Arc Gas. Please fund it with ARC.")
+
+        # 2. Approve USDC
+        erc20_abi = [{"constant":True,"inputs":[{"name":"_owner","type":"address"}],"name":"balanceOf","outputs":[{"name":"balance","type":"uint256"}],"type":"function"},{"constant":False,"inputs":[{"name":"_spender","type":"address"},{"name":"_value","type":"uint256"}],"name":"approve","outputs":[{"name":"","type":"bool"}],"type":"function"}]
         usdc_contract = w3.eth.contract(address=usdc_addr, abi=erc20_abi)
         amount_cents = int(order.amount_usdc * 100)
         
+        usdc_balance = usdc_contract.functions.balanceOf(account.address).call()
+        if usdc_balance < amount_cents:
+            raise Exception(f"Agent wallet {account.address} has insufficient USDC. Balance: {usdc_balance/100:.2f}, Needed: {order.amount_usdc:.2f}")
+
         nonce = w3.eth.get_transaction_count(account.address)
         try:
             approve_tx = usdc_contract.functions.approve(contract_addr, amount_cents).build_transaction({
