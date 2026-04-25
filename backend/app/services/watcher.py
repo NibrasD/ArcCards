@@ -60,11 +60,12 @@ async def watch_events():
     w3 = Web3(Web3.HTTPProvider(rpc))
     contract = w3.eth.contract(address=addr, abi=ABI)
 
-    # Get persisted cursor or start from current block
+    # Get persisted cursor or start from current block with safety margin
     db = SessionLocal()
     last_block = get_start_ledger(db)
     if last_block == 0:
-        last_block = w3.eth.block_number
+        # Start 100 blocks back to ensure we don't miss recent txs during deploy
+        last_block = max(0, w3.eth.block_number - 100)
         save_start_ledger(db, last_block)
     db.close()
 
@@ -83,12 +84,23 @@ async def watch_events():
                 for event in events:
                     import uuid
                     try:
+                        # Try decoding as raw UTF-8 string (our test script sends this)
                         raw_str = event.args.order_id.decode('utf-8').rstrip('\x00')
-                        order_id = str(uuid.UUID(raw_str))
+                        # If it's 32 chars without hyphens, convert to standard UUID string
+                        if len(raw_str) == 32:
+                            order_id = str(uuid.UUID(raw_str))
+                        else:
+                            order_id = raw_str
                     except Exception:
-                        # Fallback if it wasn't a UUID
+                        # Fallback: maybe it's the hex representation of the bytes
                         order_id = event.args.order_id.hex()
-                        
+                        # If it started with 0x in string form or something else
+                        if len(order_id) > 36: # Likely a hex dump
+                            try:
+                                # Try to see if the database contains this hex
+                                pass 
+                            except: pass
+
                     sender = event.args.sender
                     amount = event.args.amount
                     tx_hash = event.transactionHash.hex()
