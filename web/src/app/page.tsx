@@ -39,10 +39,13 @@ export default function Dashboard() {
   const API_BASE = rawApiBase.endsWith('/') ? rawApiBase.slice(0, -1) : rawApiBase;
 
   useEffect(() => {
+    console.log("Using API_BASE:", API_BASE);
     const fetchData = async () => {
       try {
         // Fetch Status
-        const statusRes = await fetch(`${API_BASE}/status`);
+        const statusUrl = `${API_BASE}/status`;
+        console.log("Fetching status from:", statusUrl);
+        const statusRes = await fetch(statusUrl);
         if (statusRes.ok) {
           setSystemStatus(await statusRes.json());
         }
